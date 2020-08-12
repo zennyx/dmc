@@ -59,11 +59,6 @@ Prometheus->>Kubernetes: 监控
 
 ## Ansible
 
-## Harbor
-
-> TODO
-> 镜像的管理？
-
 ## Docker(CE)
 
 在至少一台主机或虚拟机上部署Docker，用于制作镜像文件。
@@ -217,43 +212,60 @@ Prometheus->>Kubernetes: 监控
 
 1. 建立基础镜像
 
-   1. 建立Java基础镜像（Alpine + glibc），Dockerfile如下：
+   - Java（Alpine + glibc + openjdk）
 
-      ``` dockerfile
-      FROM alpine:3.12.0
-      MAINTAINER usr <usr@mail.com>
-      RUN apk add --no-cache ca-certificates curl openssl binutils xz tzdata \
-          && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-        && echo "Asia/Shanghai" > /etc/timezone \
-        && GLIBC_VER="2.32-r0" \
-        && ALPINE_GLIBC_REPO="https://github.com/sgerrand/alpine-pkg-glibc/releases/download" \
-        && curl -Ls ${ALPINE_GLIBC_REPO}/${GLIBC_VER}/glibc-${GLIBC_VER}.apk > /tmp/${GLIBC_VER}.apk \
-        && apk add --allow-untrusted /tmp/${GLIBC_VER}.apk \
-        && curl -Ls https://www.archlinux.org/packages/core/x86_64/gcc-libs/download > /tmp/gcc-libs.tar.xz \
-        && mkdir /tmp/gcc \
-        && tar -xf /tmp/gcc-libs.tar.xz -C /tmp/gcc \
-        && mv /tmp/gcc/usr/lib/libgcc* /tmp/gcc/usr/lib/libstdc++* /usr/glibc-compat/lib \
-        && strip /usr/glibc-compat/lib/libgcc_s.so.* /usr/glibc-compat/lib/libstdc++.so* \
-        && curl -Ls https://www.archlinux.org/packages/core/x86_64/zlib/download > /tmp/libz.tar.xz \
-        && mkdir /tmp/libz \
-        && tar -xf /tmp/libz.tar.xz -C /tmp/libz \
-        && mv /tmp/libz/usr/lib/libz.so* /usr/glibc-compat/lib \
-        && apk del binutils \
-        && rm -rf /tmp/${GLIBC_VER}.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*
-      ```
+      - 方案1（在线 + 自定义）
+         1. 建立Java基础镜像（Alpine + glibc），Dockerfile如下：
 
-      > 注意：1. 文中`usr`和`usr@mail.com`需根据实际情况替换；2. 文中把时区设为了中国上海，可根据实际情况替换; 3. gcclib的下载链接没有版本号，下次制作镜像时下载的gcclib版本可能变动，但是提前下载后COPY/ADD会增加分层吧？再考虑一下
+            ``` dockerfile
+            FROM alpine:3.12.0
+            MAINTAINER usr <usr@mail.com>
+            RUN apk add --no-cache ca-certificates curl openssl binutils xz tzdata \
+              && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+              && echo "Asia/Shanghai" > /etc/timezone \
+              && GLIBC_VER="2.32-r0" \
+              && ALPINE_GLIBC_REPO="https://github.com/sgerrand/alpine-pkg-glibc/releases/download" \
+              && curl -Ls ${ALPINE_GLIBC_REPO}/${GLIBC_VER}/glibc-${GLIBC_VER}.apk > /tmp/${GLIBC_VER}.apk \
+              && apk add --allow-untrusted /tmp/${GLIBC_VER}.apk \
+              && curl -Ls https://www.archlinux.org/packages/core/x86_64/gcc-libs/download > /tmp/gcc-libs.tar.xz \
+              && mkdir /tmp/gcc \
+              && tar -xf /tmp/gcc-libs.tar.xz -C /tmp/gcc \
+              && mv /tmp/gcc/usr/lib/libgcc* /tmp/gcc/usr/lib/libstdc++* /usr/glibc-compat/lib \
+              && strip /usr/glibc-compat/lib/libgcc_s.so.* /usr/glibc-compat/lib/libstdc++.so* \
+              && curl -Ls https://www.archlinux.org/packages/core/x86_64/zlib/download > /tmp/libz.tar.xz \
+              && mkdir /tmp/libz \
+              && tar -xf /tmp/libz.tar.xz -C /tmp/libz \
+              && mv /tmp/libz/usr/lib/libz.so* /usr/glibc-compat/lib \
+              && apk del binutils \
+              && rm -rf /tmp/${GLIBC_VER}.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*
+            ```
 
-   1. 上传镜像
+            > 注意：1. 文中`usr`和`usr@mail.com`需根据实际情况替换；2. 文中把时区设为了中国上海，可根据实际情况替换; 3. gcclib的下载链接没有版本号，下次制作镜像时下载的gcclib版本可能变动，但是提前下载后COPY/ADD会增加分层吧？再考虑一下
 
-   1. 建立JRE镜像（Alpine + glibc + openjdk），Dockerfile如下：
+         1. 上传镜像
 
-      ``` dockerfile
-      ```
+         1. 建立JRE镜像（Alpine + glibc + dragonwell）
 
-      > 嫌麻烦的话，也可以直接从阿里云上下拉取`dragonwell openjdk`的镜像使用。查看[Use Dragonwell8 docker image](https://github.com/alibaba/dragonwell8/wiki/Use-Dragonwell8-docker-image)和[Use Dragonwell 11 docker images](https://github.com/alibaba/dragonwell11/wiki/Use-Dragonwell-11-docker-images)了解更多
+            ``` dockerfile
+            FROM alpine_3.12.0_glibc_2.32-r0_dragonwell_8.4.4
+            MAINTAINER usr <usr@mail.com>
+            RUN DRAGONWELL_VER="8.4.4" \
+               && DRAGONWELL_REPO="https://dragonwell.oss-cn-shanghai.aliyuncs.com/8" \
+               && curl -Ls ${DRAGONWELL_REPO}/${DRAGONWELL_VER}-GA/Alibaba_Dragonwell_${GLIBC_VER}-GA_Linux_x64.tar.gz > /tmp/dragonwell.tar.gz \
+               && mkdir /tmp/java \
+               && tar -xf /tmp/dragonwell.tar.gz -C /tmp/java \
+            ```
 
-> TODO 写个shell？数据卷如何管理（https://github.com/ClusterHQ/flocker查一下）？
+            > 可查看[Use Dragonwell8 docker image](https://github.com/alibaba/dragonwell8/wiki/Use-Dragonwell8-docker-image)和[Use Dragonwell 11 docker images](https://github.com/alibaba/dragonwell11/wiki/Use-Dragonwell-11-docker-images)了解更多，不过注意，这些是`jdk`，不是`jre`
+
+      - 方案2：（离线 + 自定义）
+
+> TODO 写个shell->等看完Ansible的playbook再说？数据卷如何管理？->查一下<https://github.com/ClusterHQ/flocker>？
+
+## Harbor
+
+> TODO
+> 镜像的管理？
 
 ## Webpack
 
