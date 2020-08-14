@@ -244,19 +244,29 @@ Prometheus->>Kubernetes: 监控
 
          1. 上传镜像
 
+            > TODO 看完Harbor后写
+
          1. 建立JRE镜像（Alpine + glibc + dragonwell）
 
             ``` dockerfile
-            FROM alpine_3.12.0_glibc_2.32-r0_dragonwell_8.4.4
+            FROM path/to/harbor/alpine:3.12.0_glibc_2.32-r0
             MAINTAINER usr <usr@mail.com>
             RUN DRAGONWELL_VER="8.4.4" \
                && DRAGONWELL_REPO="https://dragonwell.oss-cn-shanghai.aliyuncs.com/8" \
-               && curl -Ls ${DRAGONWELL_REPO}/${DRAGONWELL_VER}-GA/Alibaba_Dragonwell_${GLIBC_VER}-GA_Linux_x64.tar.gz > /tmp/dragonwell.tar.gz \
-               && mkdir /tmp/java \
-               && tar -xf /tmp/dragonwell.tar.gz -C /tmp/java \
+               && JAVA_VER="8u262-b10"
+               && curl -Ls ${DRAGONWELL_REPO}/${DRAGONWELL_VER}-GA/Alibaba_Dragonwell_${DRAGONWELL_VER}-GA_Linux_x64.tar.gz > /tmp/dragonwell.tar.gz \
+               && mkdir /tmp/dragonwell \
+               && tar -xf /tmp/dragonwell.tar.gz -C /tmp/dragonwell \
+               && mv /tmp/dragonwell/jdk${JAVA_VER}/jre /opt/java \
+               && rm -rf /tmp/dragonwell.tar.gz /tmp/dragonwell
+            RUN chmod +x /opt/java
+            ENV JAVA_HOME=/opt/java
+            ENV PATH="$JAVA_HOME/jre/bin:${PATH}"
             ```
 
-            > 可查看[Use Dragonwell8 docker image](https://github.com/alibaba/dragonwell8/wiki/Use-Dragonwell8-docker-image)和[Use Dragonwell 11 docker images](https://github.com/alibaba/dragonwell11/wiki/Use-Dragonwell-11-docker-images)了解更多，不过注意，这些是`jdk`，不是`jre`
+            > 嫌麻烦也可以直接使用`dragonwell`官方提供的镜像，详见[Use Dragonwell8 docker image](https://github.com/alibaba/dragonwell8/wiki/Use-Dragonwell8-docker-image)和[Use Dragonwell 11 docker images](https://github.com/alibaba/dragonwell11/wiki/Use-Dragonwell-11-docker-images)，只是注意一点，这些是`jdk`
+
+            > TODO 目录用/usr/local还是/opt？
 
       - 方案2：（离线 + 自定义）
 
