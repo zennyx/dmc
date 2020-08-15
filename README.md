@@ -5,12 +5,12 @@
 ## 概览
 
 - [Ansible](https://www.ansible.com/)
-- [Docker(CE)](https://www.docker.com/)
+- [Docker(19.03.12 CE)](https://www.docker.com/)
 - [GitLab(CE)](https://about.gitlab.com/)
 - [Harhor](https://goharbor.io/)
 - [Istio](https://istio.io)/[OSM](https://openservicemesh.io/)
 - [Jenkins](http://www.jenkins.io/)
-- [Kubernetes](https://kubernetes.io/)
+- [Kubernetes(1.18)](https://kubernetes.io/)
 - [Maven](https://maven.apache.org/)
 - [Nexus(OSS)](https://www.sonatype.com/)
 - [Nightwatch](https://nightwatchjs.org/)
@@ -65,11 +65,11 @@ Prometheus->>Kubernetes: 监控
 
 1. 安装
 
-   > 操作系统采用CentOS 8，之后如无说明，一律默认采用CentOS 8
-
-   I. 安装预处理
+   I. 安装预处理（可选）
 
    - 系统要求
+
+      - 操作系统采用CentOS 7，因为目前Docker仅提供CentOS 7 相关Package
 
       - `centos-extras`仓库必须启用。该仓库默认启用，但如果被禁用，可通过以下方式重新启用：
 
@@ -107,7 +107,7 @@ Prometheus->>Kubernetes: 监控
 
          可通过`docker info`确认Docker所使用的存储驱动
 
-         > 存储驱动需要OS文件系统的支持。CentOS 8默认使用`xfs`文件系统，可支持Docker的`overlay2`驱动，但仅当`ftype`选项设为`1`时有效。
+         > 存储驱动需要OS文件系统的支持。CentOS 7默认使用`xfs`文件系统，可支持Docker的`overlay2`驱动，但仅当`ftype`选项设为`1`时有效。
          > 可通过以下命令确认文件系统是否支持`overlay2`：
          >
          > ``` bash
@@ -165,13 +165,27 @@ Prometheus->>Kubernetes: 监控
       sudo docker run hello-world
       ```
 
-      > `19.03.12`为当前的稳定版。由于更新频繁，实际安装前，请先从[这里](https://hub.docker.com/_/docker)查阅最新的稳定版版本号。**严禁**采用`sudo yum install docker-ce docker-ce-cli containerd.io`的方式进行安装
+      > `19.03.12`为当前的稳定版。由于更新频繁，实际安装前，请先从[这里](https://hub.docker.com/_/docker)查阅最新的稳定版版本号。**不推荐**采用`sudo yum install docker-ce docker-ce-cli containerd.io`的方式进行安装
 
       至此，Docker已经安装完成并运行，接下来可移步安装后处理，配置docker命令的权限（可选）
 
    - 离线安装
 
-      > TODO 待更新
+      前往<https://download.docker.com/linux/centos/>并选择CentOS版本（7，目前有且仅有），然后浏览至`x86_64/stable/Packages/`，下载相应`.rpm`包，分别是：
+
+      ``` text
+      docker-ce-19.03.12-3.el7.x86_64.rpm
+      docker-ce-cli-19.03.12-3.el7.x86_64.rpm
+      containerd.io-1.2.13-3.2.el7.x86_64.rpm
+      ```
+
+      安装Docker引擎，把路径换成你下载的包的路径
+
+      ``` bash
+      sudo yum install /path/to/containerd.io-1.2.13-3.2.el7.x86_64.rpm
+      sudo yum install /path/to/docker-ce-19.03.12-3.el7.x86_64.rpm
+      sudo yum install /path/to/docker-ce-cli-19.03.12-3.el7.x86_64.rpm
+      ```
 
    - 脚本安装（需在线，仅适用于测试及开发场合）
 
@@ -193,6 +207,8 @@ Prometheus->>Kubernetes: 监控
       # 验证
       docker run hello-world
       ```
+
+      > 避免在执行上述操作前运行Docker CLI，会导致Docker CLI自动生成的`~/.docker/`路径（包括其中的路径和文件）的权限、所有者不匹配
 
    - 服务管理
 
@@ -242,10 +258,6 @@ Prometheus->>Kubernetes: 监控
 
             > 注意：1. 文中`usr`和`usr@mail.com`需根据实际情况替换；2. 文中把时区设为了中国上海，可根据实际情况替换; 3. gcclib的下载链接没有版本号，下次制作镜像时下载的gcclib版本可能变动，但是提前下载后COPY/ADD会增加分层吧？再考虑一下
 
-         1. 上传镜像
-
-            > TODO 看完Harbor后写
-
          1. 建立JRE镜像（Alpine + glibc + dragonwell）
 
             ``` dockerfile
@@ -268,7 +280,13 @@ Prometheus->>Kubernetes: 监控
 
             > TODO 目录用/usr/local还是/opt？
 
+         1. 上传镜像
+
+            > TODO 看完Harbor后写
+
       - 方案2：（离线 + 自定义）
+
+         > TODO
 
 > TODO 写个shell->等看完Ansible的playbook再说？数据卷如何管理？->查一下<https://github.com/ClusterHQ/flocker>？
 
@@ -291,11 +309,82 @@ Prometheus->>Kubernetes: 监控
 
 ## Kubernetes
 
+至少3台主机或虚拟机用作主节点（Master Node），至少3台主机或虚拟机用作从节点（Work Node）
+
+1. 安装
+
+   安装`kubeadm`
+
+      I. 安装预处理（可选）
+
+      - 系统要求
+         - 操作系统采用CentOS 7，保持统一
+         - 每台主机/虚拟机2GB或更多的RAM（如果少于这个数值将会影响应用的运行内存）
+         - 2CPU核或更多
+         - 集群中的所有机器的网络彼此均能相互连接(公网和内网均可)
+         - 确保每个节点上MAC地址和product_uuid的唯一性
+
+            一般来讲，硬件设备会拥有唯一的地址，但是有些虚拟机的地址可能会重复。Kubernetes 使用这些值来唯一确定集群中的节点。 如果这些值在每个节点上不唯一，可能会导致安装失败
+            - 可以使用命令`ip link`或`ifconfig -a`来获取网络接口的MAC地址
+            - 可以使用`sudo cat /sys/class/dmi/id/product_uuid`命令对product_uuid 校验
+
+         - 确保开启主机/虚拟机上的以下端口
+
+            主节点用
+
+            协议|方向|端口范围|作用|使用者
+            :--:|:--:|--|--|--
+            TCP|入站|6443|Kubernetes API Server|所有组件
+            TCP|入站|2379-2380|etcd server client API|kube-apiserver、etcd
+            TCP|入站|10250|Kubelet API|kubelet自身、Control plane组件
+            TCP|入站|10251|kube-scheduler|kube-scheduler自身
+            TCP|入站|10252|kube-controller-manager|kube-controller-manager自身
+
+            从节点用
+
+            协议|方向|端口范围|作用|使用者
+            :--:|:--:|--|--|--
+            TCP|入站|10250|Kubelet API|kubelet自身、Control plane组件
+            TCP|入站|30000-32767|NodePort服务|所有组件
+
+         - **禁用**交换分区，以保证`kubelet`工作正常
+      - 检查网络适配器
+
+         如果存在一个以上的网络适配器，同时Kubernetes组件通过默认路由不可达的场合，建议预先添加 IP 路由规则，以便Kubernetes集群可以通过对应的适配器完成连接
+
+      - 确保`iptables`工具能够处理bridged traffic
+
+         执行`lsmod | grep br_netfilter`命令，确保`br_netfilter`模块已加载；或者通过`sudo modprobe br_netfilter`命令显式加载
+
+         然后，确保`sysctl`的配置文件中，`net.bridge.bridge-nf-call-iptables`被设置为`1`，例如：
+
+         ``` bash
+         cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+         net.bridge.bridge-nf-call-ip6tables = 1
+         net.bridge.bridge-nf-call-iptables = 1
+         EOF
+         sudo sysctl --system
+         ```
+
+      II. 安装方式
+
+      III. 安装后处理（可选）
+
+   使用`kubeadm`创建集群
+
+1. 部署等
+
 > TODO
-> Master节点ha？
+>
+> 1. 高可用
+> 1. 节点版本更新（不是Deployment，是指kube-apiserver、kubelet等的更新）
 
 ## Istio
 
 ## Nightwatch
 
 ## Prometheus
+
+> TODO 杂项：
+>
+> 1. 发布的版本管理 -> <http://semver.org/>
