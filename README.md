@@ -100,7 +100,7 @@ Prometheus->>Kubernetes: 监控
             >
             > ``` bash
             > # 使用阿里的镜像源
-            > wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-8.repo
+            > wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
             > ```
 
       - 推荐采用`overlay2`存储驱动（`storage driver`）
