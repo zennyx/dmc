@@ -299,6 +299,96 @@ Prometheus->>Kubernetes: 监控
 
 ## Maven
 
+在每台后端（Java）开发机上部署，CI/CD的重要一环。因为IDE中基本都集成了Maven，所以安装之类的操作略过，这里主要叙述笔者构建Maven项目时的一些见解
+
+1. Maven Wrapper（mvnw）
+
+   用以确保构建项目时，使用的Maven版本保持一致
+
+   - 确认方法
+
+      如果当前项目支持mvnw，则当前项目根目录下应存在以下文件和文件夹：
+
+      ``` text
+      |- .mvn
+      |    └- wrapper
+      |          |- MavenWrapperDownloader.java
+      |          |- maven-wrapper.jar
+      |          └- maven-wrapper.properties
+      |- mvnw
+      └- mvnw.cmd
+      ```
+
+   - 获取mvnw支持
+
+      - 使用IDEA创建Maven的项目，原生支持mvnw
+      - 使用[Spring Initializr](https://start.spring.io/)创建的项目，原生支持mvnw
+      - 使用[STS](https://spring.io/tools)创建的spring项目，原生支持mvnw
+      - 使用Maven 3.7.0及以上版本创建的项目，原生支持mvnw
+      - 对于既存项目，也可以通过执行Maven命令获得支持：
+
+         ``` bash
+         cd path/to/yourmavenproject
+         mvn -N io.takari:maven:0.7.7:wrapper -Dmaven=3.5.4
+         ```
+
+         > 0.7.7为wrapper-maven-plugin的版本，3.5.4表示期望Maven版本为3.5.4
+
+   - 使用（以`clean install`为例）
+
+      原先
+
+      ``` bash
+      mvn clean install
+      ```
+
+      获取`mvnw`支持后
+
+      ``` bash
+      ./mvnw clean install
+      ```
+
+      或者（在Win操作系统上）
+
+      ``` shell
+      mvnw.cmd clean install
+      ```
+
+   > `mvnw`的资料可查看[这里](https://github.com/takari/maven-wrapper)。另外，除了保持版本统一外，其实`mvnw`还能玩一些别的花样，在[springfield](https://github.com/zennyx/springfield)里能看到范例
+
+1. Maven项目结构
+
+   ``` text
+   parent
+      └- main
+         |- module1
+         |     |- module1-interfaces
+         |     └- module1-implements
+         |- module2
+         |     |- module2-interfaces
+         |     └- module2-implements
+         ...
+         └- modulen
+               |- modulen-interfaces
+               └- modulen-implements
+   ```
+
+   parent（pom项目）： 用以显式项目依赖/插件的版本，可使用的镜像及仓库
+
+   main（pom项目）：用以管理下属各子模块项目的构建，指定`profiles`。main项目不一定要作为parent的子模块，两者作为平级项目亦可，只要main的pom以parent为父pom即可，增加灵活性
+
+   module(1~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
+
+   module(1~n)-interfaces/module(1~n)-implements（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，业务实现放在implements内。最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
+
+1. 课题
+
+   - 用parent指定依赖版本对于短时间的开发没有问题，但长期运维的项目必定会碰到依赖升级的问题，这个时候如何处理比较好？
+
+   - 各子模块的版本号该怎么管理？各子模块版本统一虽然方便管理，但会出现部分模块无更改提版、一次改动全部部署；各自管理则在相互依赖时会出现搞不清楚依赖哪个版本？-> 子模块间的相互依赖如何管理？
+
+> TODO Jenkins pipeline
+
 ## GitLab(CE)
 
 ## Sinopia
