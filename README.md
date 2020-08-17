@@ -299,26 +299,26 @@ Prometheus->>Kubernetes: 监控
 
 ## Maven
 
-在每台后端（Java）开发机上部署，CI/CD的重要一环。因为IDE中基本都集成了Maven，所以安装之类的操作略过，这里主要叙述笔者构建Maven项目时的一些见解
+在每台后端（Java）开发机上部署，CI/CD的重要一环。因为IDE中基本都集成了Maven，所以安装之类的操作略过，这里主要叙述笔者在构建Maven项目时的一些见解
 
 1. Maven Wrapper（mvnw）
 
    用以确保构建项目时，使用的Maven版本保持一致
 
-   > `mvnw`的资料可查看[这里](https://github.com/takari/maven-wrapper)。另外，除了保持版本统一外，其实`mvnw`还能玩一些别的花样，在[springfield](https://github.com/zennyx/springfield)里能看到范例
+   > `mvnw`的资料可查阅[这里](https://github.com/takari/maven-wrapper)。另外，除了保持版本统一外，其实`mvnw`还能玩一些别的花样，在[springfield](https://github.com/zennyx/springfield)里能看到用例
 
    - 确认方法
 
-      如果当前项目支持mvnw，则当前项目根目录下应存在以下文件和文件夹：
+      如果当前项目支持mvnw，则项目根目录下应存在以下文件和文件夹：
 
       ``` text
-      |- .mvn
-      |    └- wrapper
-      |          |- MavenWrapperDownloader.java
-      |          |- maven-wrapper.jar
-      |          └- maven-wrapper.properties
-      |- mvnw
-      └- mvnw.cmd
+      ├ .mvn
+      |   └ wrapper
+      |        ├ MavenWrapperDownloader.java
+      |        ├ maven-wrapper.jar
+      |        └ maven-wrapper.properties
+      ├ mvnw
+      └ mvnw.cmd
       ```
 
    - 获取mvnw支持
@@ -359,17 +359,17 @@ Prometheus->>Kubernetes: 监控
 
    ``` text
    parent
-      └- main
-         |- module1
-         |     |- module1-interfaces
-         |     └- module1-implements
-         |- module2
-         |     |- module2-interfaces
-         |     └- module2-implements
+     └ main
+         ├ module1
+         |    ├ module1-interfaces
+         |    └ module1-implements
+         ├ module2
+         |    ├ module2-interfaces
+         |    └ module2-implements
          ...
-         └- modulen
-               |- modulen-interfaces
-               └- modulen-implements
+         └ modulen
+              ├ modulen-interfaces
+              └ modulen-implements
    ```
 
    parent（pom项目）： 用以显式项目依赖/插件的版本，可使用的镜像及仓库
