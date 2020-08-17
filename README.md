@@ -305,6 +305,8 @@ Prometheus->>Kubernetes: 监控
 
    用以确保构建项目时，使用的Maven版本保持一致
 
+   > `mvnw`的资料可查看[这里](https://github.com/takari/maven-wrapper)。另外，除了保持版本统一外，其实`mvnw`还能玩一些别的花样，在[springfield](https://github.com/zennyx/springfield)里能看到范例
+
    - 确认方法
 
       如果当前项目支持mvnw，则当前项目根目录下应存在以下文件和文件夹：
@@ -322,8 +324,7 @@ Prometheus->>Kubernetes: 监控
    - 获取mvnw支持
 
       - 使用IDEA创建Maven的项目，原生支持mvnw
-      - 使用[Spring Initializr](https://start.spring.io/)创建的项目，原生支持mvnw
-      - 使用[STS](https://spring.io/tools)创建的spring项目，原生支持mvnw
+      - 使用[Spring Initializr](https://start.spring.io/)或者[STS](https://spring.io/tools)创建的spring项目，原生支持mvnw
       - 使用Maven 3.7.0及以上版本创建的项目，原生支持mvnw
       - 对于既存项目，也可以通过执行Maven命令获得支持：
 
@@ -342,7 +343,7 @@ Prometheus->>Kubernetes: 监控
       mvn clean install
       ```
 
-      获取`mvnw`支持后
+      获得`mvnw`支持后
 
       ``` bash
       ./mvnw clean install
@@ -353,8 +354,6 @@ Prometheus->>Kubernetes: 监控
       ``` shell
       mvnw.cmd clean install
       ```
-
-   > `mvnw`的资料可查看[这里](https://github.com/takari/maven-wrapper)。另外，除了保持版本统一外，其实`mvnw`还能玩一些别的花样，在[springfield](https://github.com/zennyx/springfield)里能看到范例
 
 1. Maven项目结构
 
@@ -379,7 +378,7 @@ Prometheus->>Kubernetes: 监控
 
    module(1~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
 
-   module(1~n)-interfaces/module(1~n)-implements（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，业务实现放在implements内。最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
+   module(1\~n)-interfaces/module(1\~n)-implements（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，业务实现放在implements内。最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
 
 1. 课题
 
