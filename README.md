@@ -14,7 +14,7 @@
 - [Maven](https://maven.apache.org/)
 - [Nexus(OSS)](https://www.sonatype.com/)
 - [Nightwatch](https://nightwatchjs.org/)
-- [Prometheus](https://prometheus.io/)
+- [Prometheus](https://prometheus.io/)/Datadog/Influx/Graphite/New Relic/Wavefront
 - [Sinopia](https://github.com/rlidwka/sinopia)
 - [Webpack](https://webpack.js.org/)
 
@@ -226,12 +226,12 @@ Prometheus->>Kubernetes: 监控
 
       > TODO SELinux等等
 
-1. 建立基础镜像
+1. 构建基础镜像
 
    - Java（Alpine + glibc + openjdk）
 
       - 方案1（在线 + 自定义）
-         1. 建立Java基础镜像（Alpine + glibc），Dockerfile如下：
+         1. 构建Java基础镜像（Alpine + glibc），Dockerfile如下：
 
             ``` dockerfile
             FROM alpine:3.12.0
@@ -258,7 +258,7 @@ Prometheus->>Kubernetes: 监控
 
             > 注意：1. 文中`usr`和`usr@mail.com`需根据实际情况替换；2. 文中把时区设为了中国上海，可根据实际情况替换; 3. gcclib的下载链接没有版本号，下次制作镜像时下载的gcclib版本可能变动，但是提前下载后COPY/ADD会增加分层吧？再考虑一下
 
-         1. 建立JRE镜像（Alpine + glibc + dragonwell）
+         1. 构建JRE镜像（Alpine + glibc + dragonwell）
 
             ``` dockerfile
             FROM path/to/harbor/alpine:3.12.0_glibc_2.32-r0
@@ -288,7 +288,43 @@ Prometheus->>Kubernetes: 监控
 
          > TODO
 
-> TODO 写个shell->等看完Ansible的playbook再说？数据卷如何管理？->查一下<https://github.com/ClusterHQ/flocker>？
+1. 构建应用镜像
+
+   - 前端
+
+      > TODO vue/react + nginx
+
+   - 后端
+
+      spring-boot应用
+
+      ``` dockerfile
+      # 指定基础镜像，这是分阶段构建的前期阶段
+      FROM path/to/harbor/dragonwell:8.4.4_alpine_3.12.0_glibc_2.32-r0 as builder
+      # 执行工作目录
+      WORKDIR application
+      # 配置参数
+      ARG JAR_FILE=target/*.jar
+      # 将编译构建得到的jar文件复制到镜像空间中
+      COPY ${JAR_FILE} application.jar
+      # 通过工具spring-boot-jarmode-layertools从application.jar中提取拆分后的构建结果
+      RUN java -Djarmode=layertools -jar application.jar extract
+
+      # 正式构建镜像
+      FROM path/to/harbor/dragonwell:8.4.4_alpine_3.12.0_glibc_2.32-r0
+      MAINTAINER usr <usr@mail.com>
+      WORKDIR application
+      # 前一阶段从jar中提取除了多个文件，这里分别执行COPY命令复制到镜像空间中，每次COPY都是一个layer
+      COPY --from=builder application/dependencies/ ./
+      COPY --from=builder application/spring-boot-loader/ ./
+      COPY --from=builder application/snapshot-dependencies/ ./
+      COPY --from=builder application/application/ ./
+      ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]
+      ```
+
+      > spring-boot版本须为2.3.0RELEASE及以上版本；此Dockerfile应位于Maven项目module(1\~n)-implements内`pom.xml`所在目录。关于module(1\~n)-implements的说明，请参见Maven一节
+
+> TODO 写个shell->等看完Ansible的playbook再说？数据卷如何管理？->查一下<https://github.com/ClusterHQ/flocker>？MAINTAINER删了怎么样？
 
 ## Harbor
 
@@ -299,7 +335,7 @@ Prometheus->>Kubernetes: 监控
 
 ## Maven
 
-在每台后端（Java）开发机上部署，CI/CD的重要一环。因为IDE中基本都集成了Maven，所以安装之类的操作略过，这里主要叙述笔者在构建Maven项目时的一些见解
+在每台后端（Java）开发机上部署，CI/CD的重要一环。因为IDE中基本都集成了Maven，所以安装之类的操作不在赘述，重点放在其他和DevOps相关的内容上
 
 1. Maven Wrapper（mvnw）
 
@@ -326,11 +362,21 @@ Prometheus->>Kubernetes: 监控
       - 使用IDEA创建Maven的项目，原生支持mvnw
       - 使用[Spring Initializr](https://start.spring.io/)或者[STS](https://spring.io/tools)创建的spring项目，原生支持mvnw
       - 使用Maven 3.7.0及以上版本创建的项目，原生支持mvnw
-      - 对于既存项目，也可以通过执行Maven命令获得支持：
+      - 对于既存项目，也可以通过以下方式获得支持：
+
+        直接执行Maven命令（在线）
 
          ``` bash
          cd path/to/yourmavenproject
          mvn -N io.takari:maven:0.7.7:wrapper -Dmaven=3.5.4
+         ```
+
+         使用插件（离线）
+
+         ``` xml
+         ```
+
+         ``` bash
          ```
 
          > 0.7.7为wrapper-maven-plugin的版本，3.5.4表示期望Maven版本为3.5.4
@@ -355,6 +401,8 @@ Prometheus->>Kubernetes: 监控
       mvnw.cmd clean install
       ```
 
+   > TODO 确认下哪些模块需要mvnw支持，仅主项目还是子项目也需要
+
 1. Maven项目结构
 
    ``` text
@@ -376,9 +424,118 @@ Prometheus->>Kubernetes: 监控
 
    main（pom项目）：用以管理下属各子模块项目的构建，指定`profiles`。main项目不一定要作为parent的子模块，两者作为平级项目亦可，只要main的pom以parent为父pom即可，增加灵活性
 
-   module(1~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
+   module(1\~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
 
-   module(1\~n)-interfaces/module(1\~n)-implements（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，业务实现放在implements内。最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
+   module(1\~n)-interfaces（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
+
+   module(1\~n)-implements（jar项目）：和module(1\~n)-interfaces对应，所有的业务实现放在implements内，同时还须提供对容器化的支持，其`pom.xml`示例如下所示（spring-boot版本须2.3.0.RELEASE及以上，且以`spring-boot-starter-parent`为parent）：
+
+   ``` xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <project xmlns="http://maven.apache.org/POM/4.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+     <modelVersion>4.0.0</modelVersion>
+
+     <!-- 引入wavefront需要额外配置依赖，应配置于parent项目中 -->
+     <!--
+     <properties>
+       <wavefront.version>2.0.0</wavefront.version>
+     </properties>
+     -->
+
+     <dependencies>
+       <!-- 对外提供内建的终端（诸如指标、审计信息等），以便监控、管理应用 -->
+       <dependency>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-actuator</artifactId>
+       </dependency>
+       <!-- 指标监控类，按需选择使用 -->
+       <dependency>
+         <groupId>com.wavefront</groupId>
+         <artifactId>wavefront-spring-boot-starter</artifactId>
+       </dependency>
+       <dependency>
+         <groupId>io.micrometer</groupId>
+         <artifactId>micrometer-registry-datadog</artifactId>
+         <scope>runtime</scope>
+       </dependency>
+       <dependency>
+         <groupId>io.micrometer</groupId>
+         <artifactId>micrometer-registry-graphite</artifactId>
+         <scope>runtime</scope>
+       </dependency>
+       <dependency>
+         <groupId>io.micrometer</groupId>
+         <artifactId>micrometer-registry-influx</artifactId>
+         <scope>runtime</scope>
+       </dependency>
+       <dependency>
+         <groupId>io.micrometer</groupId>
+         <artifactId>micrometer-registry-new-relic</artifactId>
+         <scope>runtime</scope>
+       </dependency>
+       <dependency>
+         <groupId>io.micrometer</groupId>
+         <artifactId>micrometer-registry-prometheus</artifactId>
+         <scope>runtime</scope>
+       </dependency>
+     </dependencies>
+
+     <!-- 引入wavefront需要额外配置依赖，应配置于parent项目中 -->
+     <!--
+     <dependencyManagement>
+       <dependencies>
+         <dependency>
+           <groupId>com.wavefront</groupId>
+           <artifactId>wavefront-spring-boot-bom</artifactId>
+           <version>${wavefront.version}</version>
+           <type>pom</type>
+           <scope>import</scope>
+         </dependency>
+       </dependencies>
+      </dependencyManagement>
+      -->
+
+     <build>
+       <plugins>
+         <plugin>
+           <groupId>org.springframework.boot</groupId>
+           <artifactId>spring-boot-maven-plugin</artifactId>
+           <configuration>
+             <layers>
+               <!-- 用于生成分层文件layers.idx，添加依赖spring-boot-jarmode-layertools -->
+               <enabled>true</enabled>
+             </layers>
+           </configuration>
+         </plugin>
+         <plugin>
+           <groupId>com.spotify</groupId>
+           <artifactId>dockerfile-maven-plugin</artifactId>
+           <executions>
+             <execution>
+               <id>default</id>
+               <goals>
+                 <!-- 用于构建并上传镜像 -->
+                 <!-- Dockerfile应位于pom.xml所在目录，即根目录 -->
+                 <goal>build</goal>
+                 <goal>push</goal>
+               </goals>
+             </execution>
+           </executions>
+           <configuration>
+             <!-- 出于安全考虑，不在pom中直接配置私有仓库的安全凭证，而在调用插件实施构建时作为参数传入 -->
+             <!-- mvn goal -Ddockerfile.username=... -Ddockerfile.password=... -->
+             <repository>${docker.image.prefix}/${project.artifactId}</repository>
+             <tag>${project.version}</tag>
+           </configuration>
+         </plugin>
+       </plugins>
+     </build>
+   </project>
+   ```
+
+   > 参考资料：[打包](https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-container-images)、[部署](https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment)、[插件](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/#repackage)、[其他](https://github.com/spotify/dockerfile-maven/blob/master/docs/usage.md)
 
 1. 课题
 
@@ -467,6 +624,7 @@ Prometheus->>Kubernetes: 监控
 >
 > 1. 高可用
 > 1. 节点版本更新（不是Deployment，是指kube-apiserver、kubelet等的更新）
+> 1. [Kubernetes Probes with spring-boot](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-kubernetes-probes)
 
 ## Istio
 
