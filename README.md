@@ -18,7 +18,7 @@
 - [Sinopia](https://github.com/rlidwka/sinopia)
 - [Webpack](https://webpack.js.org/)
 
-> 原则上，优先采用开源软件，尽量避免采用闭源商业软件；优先寻找闭源商业软件的可替代方案
+> 原则上，优先采用开源软件，尽量避免采用闭源、商业软件（目前已知Docker的商业版受美国EAR限制）；优先寻找闭源商业软件的可替代方案
 
 > TODO ELK，k8s还是Istio记得自带日志收集分析功能，要确认
 
@@ -322,7 +322,7 @@ Prometheus->>Kubernetes: 监控
       ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]
       ```
 
-      > spring-boot版本须为2.3.0RELEASE及以上版本；此Dockerfile应位于Maven项目module(1\~n)-implements内`pom.xml`所在目录。关于module(1\~n)-implements的说明，请参见Maven一节
+      > spring-boot版本须为2.3.0RELEASE及以上版本；此Dockerfile应位于Maven项目sub(1\~n)-implements内`pom.xml`所在目录。关于sub(1\~n)-implements的说明，请参见Maven一节
 
 > TODO 写个shell->等看完Ansible的playbook再说？数据卷如何管理？->查一下<https://github.com/ClusterHQ/flocker>？MAINTAINER删了怎么样？
 
@@ -408,27 +408,27 @@ Prometheus->>Kubernetes: 监控
    ``` text
    parent
      └ main
-         ├ module1
-         |    ├ module1-interfaces
-         |    └ module1-implements
-         ├ module2
-         |    ├ module2-interfaces
-         |    └ module2-implements
+         ├ sub1
+         |    ├ sub1-interfaces
+         |    └ sub1-implements
+         ├ sub2
+         |    ├ sub2-interfaces
+         |    └ sub2-implements
          ...
-         └ modulen
-              ├ modulen-interfaces
-              └ modulen-implements
+         └ subn
+              ├ subn-interfaces
+              └ subn-implements
    ```
 
-   parent（pom项目）： 用以显式项目依赖/插件的版本，可使用的镜像及仓库
+   parent（pom项目）：用以显式项目依赖/插件的版本，可使用的镜像及仓库
 
-   main（pom项目）：用以管理下属各子模块项目的构建，指定`profiles`。main项目不一定要作为parent的子模块，两者作为平级项目亦可，只要main的pom以parent为父pom即可，增加灵活性
+   main（pom项目）：用以管理下属各子模块项目的构建，指定`profiles`。main项目不一定要作为parent的子模块，平级亦可，只要main的pom以parent为父pom即可，这样parent还能为其他项目提供“模板”，增加灵活性
 
-   module(1\~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
+   sub(1\~n)（pom项目）：业务模块，可根据领域模型切分，更细致得管理本模块的构建，也便于分工
 
-   module(1\~n)-interfaces（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
+   sub(1\~n)-interfaces（jar项目）：所有接口、抽象及顶层POJO、异常放在interfaces内，最大限度减少外部调用时所需的依赖，降低出现“依赖地狱”的风险
 
-   module(1\~n)-implements（jar项目）：和module(1\~n)-interfaces对应，所有的业务实现放在implements内，同时还须提供对容器化的支持，其`pom.xml`示例如下所示（spring-boot版本须2.3.0.RELEASE及以上，且以`spring-boot-starter-parent`为parent）：
+   sub(1\~n)-implements（jar项目）：和sub(1\~n)-interfaces对应，所有的业务实现放在implements内，同时还须提供对容器化的支持，其`pom.xml`示例如下所示（spring-boot版本须2.3.0.RELEASE及以上）：
 
    ``` xml
    <?xml version="1.0" encoding="UTF-8"?>
@@ -625,12 +625,15 @@ Prometheus->>Kubernetes: 监控
 > 1. 高可用
 > 1. 节点版本更新（不是Deployment，是指kube-apiserver、kubelet等的更新）
 > 1. [Kubernetes Probes with spring-boot](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-kubernetes-probes)
+> 1. 调查整理ConfigMap、Ingress等Spring Cloud的替代方案（不全，一部分需由Istio或OSM替代）
 
 ## Istio
 
 ## Nightwatch
 
 ## Prometheus
+
+> TODO 监测缺一个东西：调用链，或者说调用依赖的监控，记得k8s有，要确认
 
 > TODO 杂项：
 >
