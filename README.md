@@ -359,27 +359,29 @@ Prometheus->>Kubernetes: 监控
 
    - 获取mvnw支持
 
-      - 使用IDEA创建Maven的项目，原生支持mvnw
       - 使用[Spring Initializr](https://start.spring.io/)或者[STS](https://spring.io/tools)创建的spring项目，原生支持mvnw
       - 使用Maven 3.7.0及以上版本创建的项目，原生支持mvnw
       - 对于既存项目，也可以通过以下方式获得支持：
 
-        直接执行Maven命令（在线）
+         直接执行Maven命令（在线）
 
          ``` bash
          cd path/to/yourmavenproject
          mvn -N io.takari:maven:0.7.7:wrapper -Dmaven=3.5.4
          ```
 
-         使用插件（离线）
-
-         ``` xml
-         ```
-
-         ``` bash
-         ```
-
          > 0.7.7为wrapper-maven-plugin的版本，3.5.4表示期望Maven版本为3.5.4
+
+         从上述原生支持的项目中拷贝相关文件至既存项目中（离线）
+
+         > 注意离线的场合需要修改`maven-wrapper.properties`文件中的内容，以使用本地Maven，例如：
+
+         ``` properties
+         #distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.5.4/apache-maven-3.5.4-bin.zip
+         distributionUrl=file:///D:/java/apache-maven-3.5.4-bin.zip
+         ```
+
+         > TODO Jenkins或者GitLab那台主机估计要装Maven，看谁最终执行编译任务，要确认
 
    - 使用（以`clean install`为例）
 
@@ -593,7 +595,33 @@ Prometheus->>Kubernetes: 监控
             TCP|入站|10250|Kubelet API|kubelet自身、Control plane组件
             TCP|入站|30000-32767|NodePort服务|所有组件
 
-         - **禁用**交换分区，以保证`kubelet`工作正常
+         - **禁用**`swap`（交换分区），以保证`kubelet`工作正常
+
+           查看/etc/fstab
+
+           ``` bash
+           more /etc/fstab
+           ```
+
+           找到swap分区的记录，把加载swap分区的那行记录注释掉，例如：
+
+           ``` text
+           #/dev/mapper/cl-swap     swap                    swap    defaults        0 0
+           ```
+
+           重启主机/虚拟机
+
+           ``` bash
+           systemctl reboot
+           ```
+
+           使用`free -m`命令确认，显示结果为应为：
+
+           ``` bash
+                         total        used        free      shared  buff/cache   available
+           Swap:             0           0           0
+           ```
+
       - 检查网络适配器
 
          如果存在一个以上的网络适配器，同时Kubernetes组件通过默认路由不可达的场合，建议预先添加 IP 路由规则，以便Kubernetes集群可以通过对应的适配器完成连接
@@ -611,6 +639,8 @@ Prometheus->>Kubernetes: 监控
          EOF
          sudo sysctl --system
          ```
+
+         > 这里官方文档的中文版本和英/日版的说明不一致，暂时以英/日版为准
 
       II. 安装方式
 
