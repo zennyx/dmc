@@ -10,7 +10,7 @@
 - [Harhor](https://goharbor.io/)
 - [Istio](https://istio.io)/[OSM](https://openservicemesh.io/)
 - [Jenkins](http://www.jenkins.io/)
-- [Kubernetes(1.18)](https://kubernetes.io/)
+- [Kubernetes(1.18.8)](https://kubernetes.io/)
 - [Maven](https://maven.apache.org/)
 - [Nexus(OSS)](https://www.sonatype.com/)
 - [Nightwatch](https://nightwatchjs.org/)
@@ -212,6 +212,28 @@ Prometheus->>Kubernetes: 监控
       ```
 
       > 避免在执行上述操作前运行Docker CLI，会导致Docker CLI自动生成的`~/.docker/`路径（包括其中的路径和文件）的权限、所有者不匹配
+
+   - 配置Docker Daemon
+
+      ``` bash
+      # 创建/etc/docker目录
+      mkdir /etc/docker
+
+      # 设置 daemon
+      cat > /etc/docker/daemon.json <<EOF
+      {
+        "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "100m"
+        },
+        "storage-driver": "overlay2",
+        "storage-opts": [
+          "overlay2.override_kernel_check=true"
+        ]
+      }
+      EOF
+      ```
 
    - 服务管理
 
@@ -581,6 +603,30 @@ Prometheus->>Kubernetes: 监控
 
          - 确保开启主机/虚拟机上的以下端口
 
+            查看端口状况
+
+            ``` bash
+            netstat -anp
+            ```
+
+            打开端口（替换`portNumber`为所需打开端口号）
+
+            ``` bash
+            iptables -A INPUT -p tcp --dport portNumber -j ACCEPT
+            ```
+
+            关闭端口（替换`portNumber`为所需关闭端口号）
+
+            ``` bash
+            iptables -A OUTPUT -p tcp --dport portNumber -j DROP
+            ```
+
+            保存设置
+
+            ``` bash
+            service iptables save
+            ```
+
             主节点用
 
             协议|方向|端口范围|作用|使用者
@@ -640,6 +686,7 @@ Prometheus->>Kubernetes: 监控
          net.bridge.bridge-nf-call-ip6tables = 1
          net.bridge.bridge-nf-call-iptables = 1
          EOF
+
          sudo sysctl --system
          ```
 
@@ -647,11 +694,135 @@ Prometheus->>Kubernetes: 监控
 
       II. 安装方式
 
+      - 在线安装
+
+         安装CRI-O（容器运行时），如果安装Kubernetes的主机/虚拟机已经安装了Docker，此步骤可忽略
+
+         ``` bash
+         modprobe overlay
+         modprobe br_netfilter
+
+         # 设置必需的sysctl参数，这些参数在重新启动后仍然存在
+         cat > /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
+         net.bridge.bridge-nf-call-iptables  = 1
+         net.ipv4.ip_forward                 = 1
+         net.bridge.bridge-nf-call-ip6tables = 1
+         EOF
+
+         sysctl --system
+
+         # 设置环境变量
+         OS=CentOS_7
+         VERSION=1.18:1.18.8
+
+         curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
+         curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo
+
+         yum install cri-o
+
+         # 启动CRI-O
+         systemctl daemon-reload
+         systemctl start crio
+         ```
+
+         > **注意：** CRI-O的主、次版本必须和Kubernetes的主、次版本保持一致
+
+         安装kubeadm、kubelet和kubectl
+
+         需要在每台机器上安装以下的软件包：
+         - kubeadm：用来初始化集群的指令
+         - kubelet：在集群中的每个节点上用来启动pod和容器等
+         - kubectl：用来与集群通信的命令行工具
+
+         ``` bash
+         cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+         [kubernetes]
+         name=Kubernetes
+         baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+         enabled=1
+         gpgcheck=1
+         repo_gpgcheck=1
+         gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+         exclude=kubelet kubeadm kubectl
+         EOF
+
+         # 将SELinux设置为permissive模式（相当于将其禁用）
+         sudo setenforce 0
+         sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+         sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+         sudo systemctl enable --now kubelet
+         ```
+
+         > **注意：**
+         > 通过运行命令`setenforce 0`和`sed ...`将SELinux设置为permissive模式可以有效的将其禁用。 这是允许容器访问主机文件系统所必须的，例如正常使用pod网络。 目前不得不这么做，直到kubelet升级支持SELinux为止
+
+         > TODO: 这几个repo的地址肯定连不上……需要找替代的
+
+         kubelet现在每隔几秒就会重启，因为它陷入了一个等待kubead 指令的死循环
+
+         在control-plane node（控制平面节点）上配置kubelet使用的cgroup驱动程序。须将`cgroupDriver`传递`kubeadm init`，如下：
+
+         ``` yml
+         apiVersion: kubelet.config.k8s.io/v1beta1
+         kind: KubeletConfiguration
+         cgroupDriver: <value>
+         ```
+
+         > **注意：** **仅当**cgroup驱动程序不是cgroupfs时才需要这么做，因为这就是kubelet中的默认值
+
+         重启kubelet
+
+         ``` bash
+         systemctl daemon-reload
+         systemctl restart kubelet
+         ```
+
+      - 离线安装
+
+         安装Containerd（容器运行时），如果安装Kubernetes的主机/虚拟机已经安装了Docker，此步骤可忽略
+
+         > 通过添加repo再安装CRI-O的方式离线估计不适用，考虑用Containerd代替
+
+         ``` bash
+         cat > /etc/modules-load.d/containerd.conf <<EOF
+         overlay
+         br_netfilter
+         EOF
+
+         modprobe overlay
+         modprobe br_netfilter
+
+         # 设置必需的sysctl参数，这些参数在重新启动后仍然存在
+         cat > /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
+         net.bridge.bridge-nf-call-iptables  = 1
+         net.ipv4.ip_forward                 = 1
+         net.bridge.bridge-nf-call-ip6tables = 1
+         EOF
+
+         sysctl --system
+
+         # 安装（假设containerd已经被下载并存放在/path/to目录下）
+         yum install /path/to/containerd.io-1.2.13-3.2.el7.x86_64.rpm
+
+         # 配置
+         mkdir -p /etc/containerd
+         containerd config default > /etc/containerd/config.toml
+
+         # 重启
+         systemctl restart containerd
+         ```
+
+         安装kubeadm、kubelet和kubectl
+
+         > 官方未提供，暂时咕了╮(╯▽╰)╭
+
       III. 安装后处理（可选）
 
    使用`kubeadm`创建集群
 
-1. 部署等
+1. 更新
 
 > TODO
 >
