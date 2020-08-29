@@ -10,7 +10,7 @@
 - [Harhor](https://goharbor.io/)
 - [Istio](https://istio.io)/[OSM](https://openservicemesh.io/)
 - [Jenkins](http://www.jenkins.io/)
-- [Kubernetes(1.18.8)](https://kubernetes.io/)
+- [Kubernetes(1.19.0)](https://kubernetes.io/)
 - [Maven](https://maven.apache.org/)
 - [Nexus(OSS)](https://www.sonatype.com/)
 - [Nightwatch](https://nightwatchjs.org/)
@@ -586,7 +586,7 @@ Prometheus->>Kubernetes: 监控
 
 1. 安装
 
-   安装`kubeadm`
+   使用`kubeadm`创建集群
 
       I. 安装预处理（可选）
 
@@ -713,7 +713,7 @@ Prometheus->>Kubernetes: 监控
 
          # 设置环境变量
          OS=CentOS_7
-         VERSION=1.18:1.18.8
+         VERSION=1.19:1.19.0
 
          curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/devel:kubic:libcontainers:stable.repo
          curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$VERSION/$OS/devel:kubic:libcontainers:stable:cri-o:$VERSION.repo
@@ -779,6 +779,21 @@ Prometheus->>Kubernetes: 监控
          systemctl restart kubelet
          ```
 
+         接着使用`kubeadm`创建集群
+
+         初始化control-plane node（控制平面节点）
+
+         > 控制平面节点即运行控制平面组件（包括`etcd`和`API Server`）的主机/虚拟机
+
+         1. （推荐）如果打算把单控制平面`kubeadm`集群升级到高可用，必须设置`--control-plane-endpoint`为所有控制平面节点指定共享终端。该终端可以是DNS名，IP地址，亦或是一个负载均衡器
+         1. 选择一个Pod网络附件（network add-on），并确认其是否需要将任何参数传递给`kubeadm init`。根据选定的第三方驱动，可能需要把`--pod-network-cidr`设置为驱动指定的值
+         1.
+         1.
+
+         ``` bash
+         kubeadm init <args>
+         ```
+
       - 离线安装
 
          安装Containerd（容器运行时），如果安装Kubernetes的主机/虚拟机已经安装了Docker，此步骤可忽略
@@ -820,7 +835,13 @@ Prometheus->>Kubernetes: 监控
 
       III. 安装后处理（可选）
 
-   使用`kubeadm`创建集群
+   使用`kops`安装Kubernetes
+
+      不考虑
+
+   使用`Kubespray`安装Kubernetes
+
+      不考虑
 
 1. 更新
 
