@@ -54,6 +54,10 @@
 
    快被DevOps里关于Linux的内容搞死了。
 
+1. 鸿蒙2
+
+   9月开源
+
 ### OpenJDK
 
 1. dragonwell
