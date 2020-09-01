@@ -851,6 +851,7 @@ Prometheus->>Kubernetes: 监控
 > 1. 节点版本更新（不是Deployment，是指kube-apiserver、kubelet等的更新）
 > 1. [Kubernetes Probes with spring-boot](https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-kubernetes-probes)
 > 1. 调查整理ConfigMap、Ingress等Spring Cloud的替代方案（不全，一部分需由Istio或OSM替代）
+> 1. 各节点内的应用之间如何通信？能使用哪些协议？
 
 ## Istio
 
