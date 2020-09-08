@@ -760,7 +760,7 @@ Prometheus->>Kubernetes: 监控
 
          > TODO: 这几个repo的地址肯定连不上……需要找替代的
 
-         kubelet现在每隔几秒就会重启，因为它陷入了一个等待kubead 指令的死循环
+         kubelet现在每隔几秒就会重启，陷入了一个等待kubeadm发布指令的死循环。这是正常现象， 初始化控制平面后，kubelet 将正常运行
 
          在control-plane node（控制平面节点）上配置kubelet使用的cgroup驱动程序。须将`cgroupDriver`传递`kubeadm init`，如下：
 
@@ -779,16 +779,23 @@ Prometheus->>Kubernetes: 监控
          systemctl restart kubelet
          ```
 
+         安装Pod网络安全附件
+
+         > TODO
+
          接着使用`kubeadm`创建集群
 
          初始化control-plane node（控制平面节点）
 
-         > 控制平面节点即运行控制平面组件（包括`etcd`和`API Server`）的主机/虚拟机
+         > 控制平面节点是运行控制平面组件的主机/虚拟机， 包括`etcd`（集群数据库） 和`API Server`（命令行工具`kubectl`与之通信）。
 
-         1. （推荐）如果打算把单控制平面`kubeadm`集群升级到高可用，必须设置`--control-plane-endpoint`为所有控制平面节点指定共享终端。该终端可以是DNS名，IP地址，亦或是一个负载均衡器
-         1. 选择一个Pod网络附件（network add-on），并确认其是否需要将任何参数传递给`kubeadm init`。根据选定的第三方驱动，可能需要把`--pod-network-cidr`设置为驱动指定的值
-         1.
-         1.
+         1. （推荐）如果打算把单控制平面`kubeadm`集群升级到高可用，必须设置`--control-plane-endpoint`为所有控制平面节点指定共享终端。该终端可以是负载均衡器的DNS名称或IP地址
+         1. 选择一个Pod网络附件（network add-on），并确认其是否需要将任何参数传递给`kubeadm init`。根据选定的第三方驱动，可能需要通过设置参数`--pod-network-cidr`指定驱动
+         1. （可选）从版本1.14开始，`kubeadm`尝试使用一系列众所周知的域套接字路径来检测Linux上的容器运行时。要使用不同的容器运行时，又或者在预配置的节点上安装了多个容器，请为`kubeadm init`指定`--cri-socket`参数
+         1. （可选）除非另有说明，否则`kubeadm`使用与默认网关关联的网络接口来设置此控制平面节点API server的广播地址。 要使用其他网络接口，请为`kubeadm init`设置 `--apiserver-advertise-address=<ip-address>`参数。 要部署使用IPv6地址的Kubernetes集群， 必须指定一个IPv6地址，例如`--apiserver-advertise-address=fd00::101`
+         1. （可选）在`kubeadm init`之前运行`kubeadm config images pull`，以验证与gcr.io容器镜像仓库的连通性
+
+         要初始化控制平面节点，请运行：
 
          ``` bash
          kubeadm init <args>
