@@ -10,7 +10,7 @@
 
 高可用时，需要至少3台主机/虚拟机用（以下简称机器）作主节点（Master Node），至少3台机器用作工作节点（Work Node）。
 
-### 1.2. 可兼容操作系统
+### 1.2. 操作系统要求
 
 - [ ] Ubuntu 16.04+
 - [ ] Debian 9+
@@ -158,6 +158,20 @@ sudo sysctl --system
 ### 2.1. 在线安装
 
 #### 2.1.1. 安装运行时
+
+为了能让容器在Pods上运行，需要安装CRI（Container Runtime Interface，容器运行时接口）。
+
+Kubernetes默认使用CRI与你指定的容器运行时交互；如果未指定，则kubeadm将通过扫描已知的UNIX域套接字来自动检测已安装的容器运行时。下表列出了可监测到的容器运行时以及相关的域套接字：
+
+运行时|域套接字
+--|--
+Docker|/var/run/docker.sock
+containerd|/run/containerd/containerd.sock
+CRI-O|/var/run/crio/crio.sock
+
+如果同时检测到docker和containerd，则优先选择docker。这是因为docker 18.09附带了containerd并且两者都是可以检测到的。如果检测到另外两个及以上运行时，kubeadm将报错退出。
+
+kubelet通过Docker内建的`dockershim`CRI实现与之集成。
 
 #### 2.1.2. 安装kubeadm、kubelet和kubectl
 

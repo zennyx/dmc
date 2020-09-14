@@ -10,7 +10,7 @@
 - [Harhor](https://goharbor.io/)
 - [Istio](https://istio.io)/[OSM](https://openservicemesh.io/)
 - [Jenkins](http://www.jenkins.io/)
-- [Kubernetes(1.19.0)](https://kubernetes.io/)
+- [Kubernetes(1.19.0)](https://kubernetes.io/)/[TKEStack](https://www.openatom.org/#/projectDetail/d7417b183f064dd2a7662762cffdc62d)
 - [Maven](https://maven.apache.org/)
 - [Nexus(OSS)](https://www.sonatype.com/)
 - [Nightwatch](https://nightwatchjs.org/)
@@ -866,7 +866,7 @@ Prometheus->>Kubernetes: 监控
 
 ## Prometheus
 
-> TODO 监测缺一个东西：调用链，或者说调用依赖的监控，记得k8s有，要确认
+> TODO 监测缺一个东西：调用链，或者说调用依赖的监控，记得k8s有，要确认；可能还要加一个：Flyway
 
 > TODO 杂项：
 >

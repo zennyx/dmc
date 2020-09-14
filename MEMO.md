@@ -56,7 +56,11 @@
 
 1. 鸿蒙2
 
-   9月开源。只需关心云操作系统的可能性。
+   [官网](https://www.harmonyos.com/cn/home/)
+
+   [源代码](https://openharmony.gitee.com/openharmony)
+
+   [IDE](https://developer.harmonyos.com/cn/develop/deveco-studio)（和安卓类似，是IDEA的魔改版）
 
 ### OpenJDK
 
