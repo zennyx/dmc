@@ -372,8 +372,8 @@ systemd_cgroup = true
 需要在每台机器上安装以下的软件包：
 
 - `kubeadm`：用于引导集群的指令。
-- `kubelet`：在集群中的每个节点上运行的组件，用于启动（一个或多个）pod和容器等。
-- `kubectl`：用于与集群通信的命令行工具。
+- `kubelet`：工作节点必须安装。在集群中的每个节点上运行的组件，用于启动（一个或多个）pod和容器等。
+- `kubectl`：主节点必须安装。用于与集群通信的命令行工具，通过kubectl可以部署应用，查看和管理集群资源，并且查看日志。
 
 kubeadm*不会*为你安装或者管理kubelet或kubectl，所以你须要确保它们与通过kubeadm安装的控制平面的版本相匹配。否则，存在发生版本偏差的风险，这可能会导致一些预料之外的错误和问题。不过，控制平面与kubelet间的相差一个次要版本是受支持的，只不过kubelet的版本不可以超过API服务器的版本。例如，1.7.0版本的kubelet可以完全兼容1.8.0版本的API服务器，反之则不可以。
 
@@ -410,7 +410,8 @@ sudo systemctl enable --now kubelet
 > 注意：
 >
 > - 通过运行命令`setenforce 0`和`sed ...`将SELinux设置为宽容模式可以有效的将其禁用。这是允许容器访问主机文件系统所必须的，例如pod网络就需要这样做。 在kubelet对SELinux的支持得到改进前，不得不这么做。
->- 如果你知道如何配置SELinux，也可以保持SELinux处于启用状态，不过可能需要一些kubeadm不支持的设置。
+> - 如果你知道如何配置SELinux，也可以保持SELinux处于启用状态，不过可能需要一些kubeadm不支持的设置。
+> - TODO repo uri要替换
 
 kubelet现在每隔几秒就会重启，陷入了一个等待kubeadm发布指令的死循环。这是正常现象， 初始化控制平面后，kubelet将正常运行。
 
@@ -426,9 +427,11 @@ kind: KubeletConfiguration
 cgroupDriver: <value>
 ```
 
-请参阅[结合一份配置文件来使用 kubeadm init](https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/#config-file)来获取更多的信息。
+请参阅[结合一份配置文件来使用`kubeadm init`](https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-init/#config-file)来获取更多的信息。
 
-请注意，**只有**在CRI的cgroup驱动程序不是`cgroupfs`时才必须这样做，因为它已经是kubelet中的默认值。
+> 注意：
+>
+> **只有**在CRI的cgroup驱动程序不是`cgroupfs`时才必须这样做，因为它已经是kubelet中的默认值。
 
 必须重新启动kubelet：
 
@@ -439,13 +442,40 @@ systemctl restart kubelet
 
 对其他容器运行时（比如CRI-O和containerd）的cgroup驱动自动检测功能正在开发中。
 
-##### 2.1.2.3. 配置kubectl
+##### 2.1.2.3. 配置kubectl（可选）
+
+启用 shell 自动补全功能。kubectl为Bash和Zsh提供了自动补全支持，可以节省大量打字时间。下面以Bash为例设置自动补齐（Zsh可参阅[这里](https://kubernetes.io/docs/tasks/tools/install-kubectl/#enabling-shell-autocompletion)）：
+
+``` bash
+# 1. 确认bash-completion依赖是否已安装
+## 如果执行成功，直接启用kubectl自动补齐即可
+### 如果失败，先安装bash-completion
+type _init_completion
+
+# 2. 安装bash-completion
+yum install bash-completion
+
+# 3. 检查安装（须先重新加载shell）
+## 确认/usr/share/bash-completion/bash_completion是否已创建
+type _init_completion
+### 如果执行成功，启用kubectl自动补齐
+### 否则执行以下命令并重新加载shell
+source /usr/share/bash-completion/bash_completion
+
+# 4. 启用kubectl自动补齐（两种方案等价）
+## 方案1：在 ~/.bashrc 文件中源引自动补齐脚本
+echo 'source <(kubectl completion bash)' >>~/.bashrc
+## 方案2：将自动补齐脚本添加到目录 /etc/bash_completion.d
+kubectl completion bash >/etc/bash_completion.d/kubectl
+```
 
 #### 2.1.3. 安装Pod网络附加组
 
 #### 2.1.4. 使用kubeadm创建集群
 
 ### 2.2. 离线安装
+
+> TODO: 需要使用PXE
 
 ## 3. 附录
 
@@ -454,3 +484,54 @@ systemctl restart kubelet
 ### 3.2. `kubeadm init`命令配置文件选项一览
 
 ### 3.3. 使用kubeadm定制控制平面配置
+
+### 3.4. 单独安装kubectl
+
+#### 3.4.1. 安装kubectl
+
+可通过以下命令安装`kubectl`：
+
+``` bash
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+yum install -y kubectl
+```
+
+#### 3.4.2. 验证kubectl配置
+
+kubectl需要一个kubeconfig配置文件以发现并访问Kubernetes集群。当使用[kube-up.sh](https://github.com/kubernetes/kubernetes/blob/master/cluster/kube-up.sh)脚本创建Kubernetes集群或者成功部署Minikube集群后，会自动生成[kubeconfig](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)配置文件。默认情况下，kubectl配置文件在`~/.kube/config`。
+
+可通过获取集群状态检查kubectl是否被正确配置：
+
+``` bash
+kubectl cluster-info
+```
+
+如果看到一个URL被返回，那么kubectl已经被正确配置，能够正常访问Kubernetes集群。
+
+如果看到类似以下的信息被返回，那么说明kubectl没有被正确配置，或者无法正常访问Kubernetes集群。
+
+``` text
+The connection to the server <server-name:port> was refused - did you specify the right host or port?
+```
+
+例如，如果你打算在笔记本电脑（本地）上运行Kubernetes集群，则需要首先安装Minikube之类的工具，然后重新运行上述命令。
+
+如果kubectl的cluster-info能够返回URL响应，但无法访问集群，可以使用下面的命令检查配置是否正确：
+
+``` bash
+kubectl cluster-info dump
+```
+
+> 参考文献：
+>
+> - <https://k8smeetup.github.io/docs/home/>
+> - <http://docs.kubernetes.org.cn/457.html>
+> - <https://github.com/kubernetes/kubernetes/blob/master/cluster/kube-up.sh>
