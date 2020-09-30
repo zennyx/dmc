@@ -871,3 +871,33 @@ Prometheus->>Kubernetes: 监控
 > TODO 杂项：
 >
 > 1. 发布的版本管理 -> <http://semver.org/>
+
+## 计划（暂）
+
+k8s集群外
+
+No.|服务器|台数|软件要求|硬件要求|备注
+:--:|--|:--:|--|--|--
+1|授时服务器|1+|Centos 7, Chrony|?|
+2|负载均衡器|1+|?|?|k8sHA用，软硬路由均可
+3|SCM服务器|1|Centos 7, GitLab|?|
+4|JavaLib仓库|1|Centos7, Nexus|?|
+5|JsLib仓库|1|?, Sinopia|?|
+6|Docker镜像仓库|1|?, Harhor|?|新版Nexus也支持Docker镜像
+
+> 授时服务器和负载均衡服务器要几台合适？
+>
+> 如何监测授时服务器和负载均衡服务器？
+>
+> 如何添加/移除额外的服务器？
+
+k8s集群内
+
+No.|服务器|台数|软件要求|硬件要求|备注
+:--:|--|:--:|--|--|--
+1|主节点|3+|Centos 7, Api Server, Controller Manager, Scedual, kube-ctl|见k8s|台数必须为奇数
+2|工作节点|3+|Centos 7, Docker(CRI-O), kube-proxy, kubelet|见k8s|台数为3台或以上即可，貌似有上限，要确认
+3|Etcd|3+|Centos 7, Etcd|?|台数必须为奇数
+4|Jenkins?|1|?|?|不确定
+
+> 如何监测主节点及工作节点的可用性？
