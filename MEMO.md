@@ -46,6 +46,131 @@
 
    流处理。优先度低，分布式/云都没搞定，流处理免谈。
 
+### 项目（Java + Maven）结构
+
+1. 公共库（参考springfield）
+
+1. 业务项目
+
+   ``` text
+   project-parent
+          ├ project-commons
+          ├ project-module[n]
+          |        ├ project-module[n]-dal
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].dal
+          |        |                    ├ config
+          |        |                    └ repository
+          |        ├ project-module[n]-buz
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].buz
+          |        |                    └ service
+          |        |                         └ impl
+          |        ├ project-module[n]-web
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].web
+          |        |                    ├ config
+          |        |                    └ controller
+          |        ├ project-module[n]-pojo
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].pojo
+          |        |                    ├ config
+          |        |                    ├ entity
+          |        |                    ├ domain
+          |        |                    └ model
+          |        ├ project-module[n]-boot
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn]
+          |        |                    └ Application.java
+          |        ├ project-module[n]-job
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].job
+          |        |                    ├ config
+          |        |                    └ task
+          |        ├ project-module[n]-api
+          |        |        └ src
+          |        |           └ com.[cn].[pn].[mn].api
+          |        |                    └ client
+          |        └ project-module[n]-bus
+          |                 └ src
+          |                    └ com.[cn].[pn].[mn].bus
+          |                             ├ config
+          |                             ├ listener
+          |                             ├ producer
+          |                             └ consumer
+          ├ ...
+          ├ project-standalone
+          |        └ src
+          |           └ com.[cn].[pn]
+          |                    └ Application.java
+          ├ project-gateway
+          |        └ src
+          |           └ com.[cn].[pn].gateway
+          └ project-samples
+
+   ※ 简要说明：
+   [cn]：公司名
+   [pn]：项目/产品/业务线名，[pn]和[mn]直接可能还有一个次业务线名
+   [mn]：模块/业务名
+
+   project-parent：Maven主项目，用于：
+      1. 项目/各子模块的打包、本地/远程仓库的发布管理
+      2. 各子模块的依赖、插件统一管理
+      3. 版本统一管理（可考虑使用${revision}${changelist}）
+
+   project-commons：项目公共库子模块
+
+   project-module[n]：各功能子模块，每个模块代表一组业务功能
+
+   project-module[n]-pojo：子模块数据/领域模型层，用于：
+      1. 为其他子模块提供业务用数据接口
+      2. 数据校验（JSR303，可使用Hibernate Validation）
+      3. 数据防锈（可选，解耦用，可使用MapStruct）
+
+   project-module[n]-dal：子模块数据访问层，用于：
+      1. 访问数据库
+      2. Shading（非代理模式）
+      ※ 依赖数据/领域模型层
+      
+   project-module[n]-buz：子模块业务层（服务），用于：
+      1. 业务的实装
+      2. 事务管理
+      ※ 可调用同模块下其他服务，可调用数据访问层
+      ※ 依赖数据访问层、数据/领域模型层
+   
+   project-module[n]-web：子模块网络层，用于：
+      1. 对外提供业务（服务）的基于HTTP的RESTFul-Api调用
+      2. 数据校验（利用数据/领域模型层提供的功能）
+      ※ 可调用业务层
+      ※ 不可调用同模块下其他网络api
+      ※ 依赖业务层、数据/领域模型层
+   
+   project-module[n]-boot：子模块引导层，通常仅包含注解有@SpringApplication的Application.java类，用于：
+      1. 子模块作为分布式项目模块打包发布时使用
+      ※ 依赖网络层、数据/领域模型层
+   
+   project-module[n]-job：子模块任务层（可选），用于：
+      1. 实装业务的批/流处理
+      ※ 依赖数据访问层、数据/领域模型层
+   
+   project-module[n]-bus：子模块总线层（可选），用于：
+      1. 实装业务消息队列相关处理
+      ※ 依赖业务层、数据/领域模型层
+   
+   project-module[n]-api：子模块接口层，用于：
+      1. 实装基于OpenFeign/dubbo的客户端，供其他模块通过RESTFul/RPC调用
+      ※ 依赖网络层、数据/领域模型层
+   
+   project-standalone：通常仅包含注解有@SpringApplication的Application.java类，用于：
+      1. 项目作为standalone打包发布时使用
+      ※ 依赖所有功能子模块的网络层、数据/领域模型层
+   
+   project-gateway：网关子项目，用于：
+      1. 路由
+      2. 鉴权
+      3. 限流
+   ```
+
 ## DevOps
 
 ### 系统
