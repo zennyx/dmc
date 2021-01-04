@@ -107,69 +107,96 @@
           |        └ src
           |           └ com.[cn].[pn].gateway
           └ project-samples
-
-   ※ 简要说明：
-   [cn]：公司名
-   [pn]：项目/产品/业务线名，[pn]和[mn]直接可能还有一个次业务线名
-   [mn]：模块/业务名
-
-   project-parent：Maven主项目，用于：
-      1. 项目/各子模块的打包、本地/远程仓库的发布管理
-      2. 各子模块的依赖、插件统一管理
-      3. 版本统一管理（可考虑使用${revision}${changelist}）
-
-   project-commons：项目公共库子模块
-
-   project-module[n]：各功能子模块，每个模块代表一组业务功能
-
-   project-module[n]-pojo：子模块数据/领域模型层，用于：
-      1. 为其他子模块提供业务用数据接口
-      2. 数据校验（JSR303，可使用Hibernate Validation）
-      3. 数据防锈（可选，解耦用，可使用MapStruct）
-
-   project-module[n]-dal：子模块数据访问层，用于：
-      1. 访问数据库
-      2. Shading（非代理模式）
-      ※ 依赖数据/领域模型层
-      
-   project-module[n]-buz：子模块业务层（服务），用于：
-      1. 业务的实装
-      2. 事务管理
-      ※ 可调用同模块下其他服务，可调用数据访问层
-      ※ 依赖数据访问层、数据/领域模型层
-   
-   project-module[n]-web：子模块网络层，用于：
-      1. 对外提供业务（服务）的基于HTTP的RESTFul-Api调用
-      2. 数据校验（利用数据/领域模型层提供的功能）
-      ※ 可调用业务层
-      ※ 不可调用同模块下其他网络api
-      ※ 依赖业务层、数据/领域模型层
-   
-   project-module[n]-boot：子模块引导层，通常仅包含注解有@SpringApplication的Application.java类，用于：
-      1. 子模块作为分布式项目模块打包发布时使用
-      ※ 依赖网络层、数据/领域模型层
-   
-   project-module[n]-job：子模块任务层（可选），用于：
-      1. 实装业务的批/流处理
-      ※ 依赖数据访问层、数据/领域模型层
-   
-   project-module[n]-bus：子模块总线层（可选），用于：
-      1. 实装业务消息队列相关处理
-      ※ 依赖业务层、数据/领域模型层
-   
-   project-module[n]-api：子模块接口层，用于：
-      1. 实装基于OpenFeign/dubbo的客户端，供其他模块通过RESTFul/RPC调用
-      ※ 依赖网络层、数据/领域模型层
-   
-   project-standalone：通常仅包含注解有@SpringApplication的Application.java类，用于：
-      1. 项目作为standalone打包发布时使用
-      ※ 依赖所有功能子模块的网络层、数据/领域模型层
-   
-   project-gateway：网关子项目，用于：
-      1. 路由
-      2. 鉴权
-      3. 限流
    ```
+
+   >简要说明：
+   >
+   >\[cn\]：公司名
+   >
+   >\[pn\]：项目/产品/业务线名，\[pn\]和\[mn\]直接可能还有一个次业务线名
+   >
+   >\[mn\]：模块/业务名
+   >
+   >project-parent：Maven主项目，用于：
+   >
+   >   1. 项目/各子模块的打包、本地/远程仓库的发布管理
+   >   1. 各子模块的依赖、插件统一管理
+   >   1. 版本统一管理（可考虑使用`${revision}${changelist}`）
+   >
+   >project-commons：项目公共库子模块
+   >
+   >project-module\[n\]：各功能子模块，每个模块代表一组业务功能
+   >
+   >project-module\[n\]-pojo：子模块数据/领域模型层，用于：
+   >
+   >   1. 为其他子模块提供业务用数据接口
+   >   1. 数据校验（JSR303，可使用Hibernate Validation）
+   >   1. 数据防锈（可选，解耦用，可使用MapStruct）
+   >
+   >project-module\[n\]-dal：子模块数据访问层，用于：
+   >
+   >   1. 访问数据库
+   >   1. Shading（非代理模式）
+   >
+   >> ※ 依赖数据/领域模型层
+   >
+   >project-module\[n\]-buz：子模块业务层（服务），用于：
+   >
+   >   1. 业务的实装
+   >   1. 事务管理
+   >
+   >>   ※ 可调用同模块下其他服务，可调用数据访问层
+   >>
+   >>   ※ 依赖数据访问层、数据/领域模型层
+   >
+   >project-module[n]-web：子模块网络层，用于：
+   >
+   >   1. 对外暴露基于RESTFul的业务（服务）API调用
+   >   1. 数据校验（利用数据/领域模型层提供的功能）
+   >   1. 异常处理
+   >
+   >>   ※ 可调用业务层
+   >>
+   >>   ※ **不可**调用同模块下其他网络api
+   >>
+   >>   ※ 依赖业务层、数据/领域模型层
+   >>
+   >>   ※ 404异常无法由`@ErrorController`捕获（看过源代码就懂了），须额外配置（如果需要的捕获的话，作为内部服务时出现404的可能性不高）
+   >
+   >project-module\[n\]-boot：子模块引导层，通常仅包含注解有`@SpringApplication`的`Application.java`类，用于：
+   >
+   >   1. 子模块作为分布式项目模块打包发布时使用
+   >
+   >>   ※ 依赖网络层、数据/领域模型层
+   >
+   >project-module\[n\]-job：子模块任务层（可选），用于：
+   >
+   >   1. 实装业务的批/流处理
+   >   ※ 依赖数据访问层、数据/领域模型层
+   >
+   >project-module\[n\]-bus：子模块总线层（可选），用于：
+   >
+   >   1. 实装业务消息队列相关处理
+   >
+   >>   ※ 依赖业务层、数据/领域模型层
+   >
+   >project-module\[n\]-api：子模块接口层，用于：
+   >
+   >   1. 实装基于OpenFeign/dubbo的客户端，供其他模块通过RESTFul/RPC调用
+   >
+   >>   ※ 依赖网络层、数据/领域模型层
+   >
+   >project-standalone：通常仅包含注解有`@SpringApplication`的`Application.java`类，用于：
+   >
+   >   1. 项目作为standalone打包发布时使用
+   >
+   >>   ※ 依赖所有功能子模块的网络层、数据/领域模型层
+   >
+   >project-gateway：网关子项目，用于：
+   >
+   >   1. 路由
+   >   1. 鉴权
+   >   1. 限流
 
 ## DevOps
 
